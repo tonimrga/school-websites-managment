@@ -26,7 +26,7 @@ it('marks inactive schools in the switcher', function () {
     School::factory()->inactive()->create(['name' => 'C škola']);
     actingAsSuperAdmin();
 
-    Livewire::test(SchoolSwitcher::class)->assertSee('C škola (neaktivna)');
+    Livewire::test(SchoolSwitcher::class)->assertSee('C škola (neaktivan)');
 });
 
 it('does not show the switcher to an editor', function () {

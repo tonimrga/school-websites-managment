@@ -35,12 +35,12 @@ class SchoolsTable
                     ->label('Korisnika')
                     ->counts('users'),
                 IconColumn::make('is_active')
-                    ->label('Aktivna')
+                    ->label('Aktivan')
                     ->boolean(),
             ])
             ->filters([
                 TernaryFilter::make('is_active')
-                    ->label('Aktivna'),
+                    ->label('Aktivan'),
             ])
             ->recordActions([
                 EditAction::make(),
@@ -56,12 +56,12 @@ class SchoolsTable
             ->icon(Heroicon::OutlinedNoSymbol)
             ->color('danger')
             ->requiresConfirmation()
-            ->modalDescription('Javna stranica škole prikazivat će poruku da je privremeno nedostupna, a urednici škole neće se moći prijaviti.')
+            ->modalDescription('Javna stranica doma prikazivat će poruku da je privremeno nedostupna, a urednici doma neće se moći prijaviti.')
             ->visible(fn (School $record): bool => $record->is_active)
             ->authorize('update')
             ->action(function (School $record, Action $action): void {
                 $record->update(['is_active' => false]);
-                $action->successNotificationTitle('Škola je deaktivirana.')->success();
+                $action->successNotificationTitle('Dom je deaktiviran.')->success();
             });
     }
 
@@ -75,7 +75,7 @@ class SchoolsTable
             ->authorize('update')
             ->action(function (School $record, Action $action): void {
                 $record->update(['is_active' => true]);
-                $action->successNotificationTitle('Škola je aktivirana.')->success();
+                $action->successNotificationTitle('Dom je aktiviran.')->success();
             });
     }
 }

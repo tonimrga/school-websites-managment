@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Activity;
 use App\Models\School;
 use App\Models\User;
 use Tests\Fixtures\Models\Note;
@@ -56,6 +57,17 @@ describe('UserPolicy', function () {
     it('allows nobody to delete users', function () {
         expect($this->admin->can('delete', $this->editorA))->toBeFalse()
             ->and($this->admin->can('deleteAny', User::class))->toBeFalse();
+    });
+});
+
+describe('ActivityPolicy', function () {
+    it('lets only the super admin read the activity log', function () {
+        $activity = Activity::create(['description' => 'test', 'log_name' => 'default']);
+
+        expect($this->admin->can('viewAny', Activity::class))->toBeTrue()
+            ->and($this->admin->can('view', $activity))->toBeTrue()
+            ->and($this->editorA->can('viewAny', Activity::class))->toBeFalse()
+            ->and($this->editorA->can('view', $activity))->toBeFalse();
     });
 });
 

@@ -57,7 +57,7 @@ class SchoolForm
                             ->url()
                             ->maxLength(255),
                         Toggle::make('is_active')
-                            ->label('Aktivna')
+                            ->label('Aktivan')
                             ->default(true),
                     ]),
                 Section::make('Kontakt')

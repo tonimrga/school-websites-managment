@@ -19,15 +19,15 @@ class SchoolResource extends Resource
 {
     protected static ?string $model = School::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBuildingLibrary;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHomeModern;
 
     protected static string|UnitEnum|null $navigationGroup = 'Administracija';
 
     protected static ?int $navigationSort = 1;
 
-    protected static ?string $modelLabel = 'škola';
+    protected static ?string $modelLabel = 'dom';
 
-    protected static ?string $pluralModelLabel = 'škole';
+    protected static ?string $pluralModelLabel = 'domovi';
 
     protected static ?string $recordTitleAttribute = 'name';
 

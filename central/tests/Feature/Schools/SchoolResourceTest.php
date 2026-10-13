@@ -12,7 +12,7 @@ use Livewire\Livewire;
 function validSchoolData(array $overrides = []): array
 {
     return [
-        'name' => 'Osnovna škola Ivana Gundulića',
+        'name' => 'Učenički dom Ivana Gundulića',
         'slug' => 'os-ivana-gundulica',
         'site_url' => 'https://os-igundulica.hr',
         'theme' => SchoolTheme::Green->value,
@@ -60,8 +60,8 @@ describe('super admin', function () {
 
     it('generates the slug from the name', function () {
         Livewire::test(CreateSchool::class)
-            ->fillForm(['name' => 'Osnovna škola Ivana Gundulića'])
-            ->assertSchemaStateSet(['slug' => 'osnovna-skola-ivana-gundulica']);
+            ->fillForm(['name' => 'Učenički dom Ivana Gundulića'])
+            ->assertSchemaStateSet(['slug' => 'ucenicki-dom-ivana-gundulica']);
     });
 
     it('requires a unique, URL-safe slug', function () {

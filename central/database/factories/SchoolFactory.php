@@ -14,7 +14,7 @@ class SchoolFactory extends Factory
 {
     public function definition(): array
     {
-        $name = 'Osnovna škola '.fake()->unique()->lastName();
+        $name = 'Učenički dom '.fake()->unique()->lastName();
         $slug = Str::slug($name);
 
         return [

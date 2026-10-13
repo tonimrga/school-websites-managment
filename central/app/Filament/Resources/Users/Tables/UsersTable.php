@@ -36,7 +36,7 @@ class UsersTable
                     ->label('Uloga')
                     ->badge(),
                 TextColumn::make('school.name')
-                    ->label('Škola')
+                    ->label('Dom')
                     ->placeholder('—')
                     ->sortable(),
                 IconColumn::make('is_active')
@@ -50,7 +50,7 @@ class UsersTable
             ])
             ->filters([
                 SelectFilter::make('school')
-                    ->label('Škola')
+                    ->label('Dom')
                     ->relationship('school', 'name'),
                 SelectFilter::make('role')
                     ->label('Uloga')

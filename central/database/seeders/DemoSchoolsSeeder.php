@@ -19,7 +19,7 @@ class DemoSchoolsSeeder extends Seeder
         $schools = [
             [
                 'school' => [
-                    'name' => 'Osnovna škola Ivana Gundulića',
+                    'name' => 'Učenički dom Ivana Gundulića',
                     'slug' => 'os-ivana-gundulica',
                     'site_url' => 'http://localhost:8081',
                     'theme' => SchoolTheme::Blue,
@@ -33,7 +33,7 @@ class DemoSchoolsSeeder extends Seeder
             ],
             [
                 'school' => [
-                    'name' => 'Osnovna škola Druga škola',
+                    'name' => 'Drugi učenički dom',
                     'slug' => 'os-druga-skola',
                     'site_url' => 'http://localhost:8082',
                     'theme' => SchoolTheme::Green,

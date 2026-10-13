@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\Article;
 use App\Models\School;
 use App\Models\User;
 use App\Support\CurrentSchool;
+use Database\Factories\ArticleFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
@@ -63,6 +65,86 @@ function createNote(School $school, array $attributes = []): Note
     Note::withoutEvents(fn () => $note->save());
 
     return $note;
+}
+
+/**
+ * Create an article for a school, whoever is logged in. The factory can be
+ * configured further, e.g. fn (ArticleFactory $f) => $f->published()->withCover().
+ *
+ * @param  (Closure(ArticleFactory): ArticleFactory)|null  $configure
+ */
+function createArticle(School $school, array $attributes = [], ?Closure $configure = null): Article
+{
+    $factory = Article::factory()->for($school);
+
+    if ($configure !== null) {
+        $factory = $configure($factory);
+    }
+
+    return withoutUser(fn (): Article => $factory->create($attributes));
+}
+
+/**
+ * Run a callback as if nobody were logged in (no tenant scope, no
+ * automatic school_id), then restore the logged-in user.
+ *
+ * @template T
+ *
+ * @param  Closure(): T  $callback
+ * @return T
+ */
+function withoutUser(Closure $callback): mixed
+{
+    $guard = auth()->guard();
+    $user = $guard->user();
+
+    $guard->forgetUser();
+
+    try {
+        return $callback();
+    } finally {
+        if ($user !== null) {
+            $guard->setUser($user);
+        }
+    }
+}
+
+/**
+ * A real JPEG with an EXIF block holding an orientation and a GPS position,
+ * like a phone photo. Returns the path of a temporary file.
+ */
+function jpegWithExif(int $width, int $height, int $orientation = 1): string
+{
+    $image = imagecreatetruecolor($width, $height);
+    imagefill($image, 0, 0, imagecolorallocate($image, 200, 60, 60));
+
+    ob_start();
+    imagejpeg($image, null, 90);
+    $jpeg = (string) ob_get_clean();
+
+    // Little-endian TIFF: IFD0 (Orientation, GPS pointer) at 8, GPS IFD
+    // (latitude ref + latitude) at 38, latitude rationals at 68.
+    $entry = fn (int $tag, int $type, int $count, string $value): string => pack('vvV', $tag, $type, $count).str_pad($value, 4, "\0");
+
+    $tiff = 'II'.pack('vV', 42, 8)
+        .pack('v', 2)
+        .$entry(0x0112, 3, 1, pack('v', $orientation))
+        .$entry(0x8825, 4, 1, pack('V', 38))
+        .pack('V', 0)
+        .pack('v', 2)
+        .$entry(0x0001, 2, 2, "N\0")
+        .$entry(0x0002, 5, 3, pack('V', 68))
+        .pack('V', 0)
+        .pack('VVVVVV', 45, 1, 48, 1, 0, 1);
+
+    $app1 = "\xFF\xE1".pack('n', 2 + 6 + strlen($tiff))."Exif\0\0".$tiff;
+
+    $base = tempnam(sys_get_temp_dir(), 'exif-');
+    $path = $base.'.jpg';
+    rename($base, $path);
+    file_put_contents($path, substr($jpeg, 0, 2).$app1.substr($jpeg, 2));
+
+    return $path;
 }
 
 /**

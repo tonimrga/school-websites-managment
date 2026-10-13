@@ -30,7 +30,7 @@ class UserForm
                     ->maxLength(255)
                     ->unique(ignoreRecord: true),
                 Select::make('school_id')
-                    ->label('Škola')
+                    ->label('Dom')
                     ->options(fn (): array => School::orderBy('name')->pluck('name', 'id')->all())
                     ->searchable()
                     ->required()

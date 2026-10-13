@@ -47,4 +47,44 @@ return [
         'editor_password' => env('DEMO_EDITOR_PASSWORD', 'urednik-demo-lozinka'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Images
+    |--------------------------------------------------------------------------
+    |
+    | Every uploaded image is scaled down to fit within this many pixels on
+    | its longest side and stripped of metadata before it is stored. Uploads
+    | are limited to max_upload_kb (also enforced by media-library.max_file_size).
+    |
+    */
+
+    'images' => [
+        'max_dimension' => 2000,
+        'max_upload_kb' => 10 * 1024,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Articles
+    |--------------------------------------------------------------------------
+    */
+
+    'articles' => [
+        'gallery_max' => 30,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Trash
+    |--------------------------------------------------------------------------
+    |
+    | Soft-deleted articles and documents are permanently deleted, with their
+    | files, this many days after deletion (content:purge-trashed, daily).
+    |
+    */
+
+    'trash' => [
+        'purge_after_days' => 30,
+    ],
+
 ];

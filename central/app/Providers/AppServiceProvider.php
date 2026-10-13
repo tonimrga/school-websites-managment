@@ -4,14 +4,18 @@ namespace App\Providers;
 
 use App\Livewire\SchoolSwitcher;
 use App\Support\CurrentSchool;
+use App\Support\HtmlSanitizer;
+use App\Support\MediaLibrary\ImageProcessingFileAdder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Foundation\Console\ServeCommand;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
+use Spatie\MediaLibrary\MediaCollections\FileAdder;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -25,6 +29,18 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->scoped(CurrentSchool::class);
+        $this->app->singleton(HtmlSanitizer::class);
+
+        // Every media library upload goes through the image pipeline.
+        $this->app->bind(FileAdder::class, ImageProcessingFileAdder::class);
+
+        // `php artisan serve` passes only a few environment variables to the
+        // PHP server. On Windows, without TEMP/TMP, PHP falls back to the
+        // unwritable C:\Windows for uploads and temporary files, so every
+        // upload fails with "failed to upload".
+        ServeCommand::$passthroughVariables = array_values(array_unique([
+            ...ServeCommand::$passthroughVariables, 'TEMP', 'TMP',
+        ]));
     }
 
     /**
@@ -39,6 +55,9 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->configureFilamentDateFormats();
+
+        // No column chooser in any dashboard table.
+        Table::configureUsing(fn (Table $table): Table => $table->columnManager(false));
 
         Livewire::component('school-switcher', SchoolSwitcher::class);
 

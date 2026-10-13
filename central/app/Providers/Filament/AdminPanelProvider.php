@@ -31,7 +31,7 @@ class AdminPanelProvider extends PanelProvider
             ->path('admin')
             ->login(Login::class)
             ->passwordReset()
-            ->brandName('Školske stranice')
+            ->brandName('Učenički domovi')
             ->renderHook(
                 PanelsRenderHook::USER_MENU_BEFORE,
                 fn (): string => auth()->user()?->isSuperAdmin()
