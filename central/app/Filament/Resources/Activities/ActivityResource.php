@@ -7,6 +7,8 @@ use App\Filament\Resources\Activities\Schemas\ActivityInfolist;
 use App\Filament\Resources\Activities\Tables\ActivitiesTable;
 use App\Models\Activity;
 use App\Models\Article;
+use App\Models\Document;
+use App\Models\DocumentCategory;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -52,6 +54,8 @@ class ActivityResource extends Resource
      */
     public const SUBJECT_LABELS = [
         Article::class => 'Vijest',
+        Document::class => 'Dokument',
+        DocumentCategory::class => 'Kategorija dokumenata',
     ];
 
     public static function infolist(Schema $schema): Schema

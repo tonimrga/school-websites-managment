@@ -1,12 +1,16 @@
 <?php
 
 use App\Models\Article;
+use App\Models\Document;
+use App\Models\DocumentCategory;
 use App\Models\School;
 use App\Models\User;
 use App\Support\CurrentSchool;
 use Database\Factories\ArticleFactory;
+use Database\Factories\DocumentFactory;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Http;
 use Tests\Fixtures\Models\Note;
 use Tests\TestCase;
@@ -82,6 +86,145 @@ function createArticle(School $school, array $attributes = [], ?Closure $configu
     }
 
     return withoutUser(fn (): Article => $factory->create($attributes));
+}
+
+/**
+ * Create a document category for a school, whoever is logged in.
+ */
+function createDocumentCategory(School $school, array $attributes = []): DocumentCategory
+{
+    return withoutUser(fn (): DocumentCategory => DocumentCategory::factory()->for($school)->create($attributes));
+}
+
+/**
+ * Create a document for a school, whoever is logged in. Without a category
+ * it goes into the school's first (default) category. The factory can be
+ * configured further, e.g. fn (DocumentFactory $f) => $f->published()->withFile().
+ *
+ * @param  (Closure(DocumentFactory): DocumentFactory)|null  $configure
+ */
+function createDocument(School $school, array $attributes = [], ?Closure $configure = null): Document
+{
+    $attributes['document_category_id'] ??= DocumentCategory::withoutGlobalScopes()
+        ->where('school_id', $school->id)
+        ->orderBy('sort_order')
+        ->value('id');
+
+    $factory = Document::factory()->for($school);
+
+    if ($configure !== null) {
+        $factory = $configure($factory);
+    }
+
+    return withoutUser(fn (): Document => $factory->create($attributes));
+}
+
+/**
+ * The contents of a small generated file of the given kind, built in PHP:
+ * pdf, doc, xls, docx, xlsx, odt, ods (real documents), docx-unordered and
+ * xlsx-unordered (valid, but in an entry order fileinfo only sees as zip),
+ * and ole, zip, exe, html, svg, php, jpeg (not documents).
+ */
+function documentFixture(string $kind): string
+{
+    $contentTypes = '<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"/>';
+    $rels = '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>';
+
+    return match ($kind) {
+        'pdf' => DocumentFactory::pdf(),
+        'doc' => oleFixture('WordDocument'),
+        'xls' => oleFixture('Workbook'),
+        'ole' => oleFixture(),
+        'docx' => zipFixture(['[Content_Types].xml' => $contentTypes, '_rels/.rels' => $rels, 'word/document.xml' => '<w:document/>']),
+        'xlsx' => zipFixture(['[Content_Types].xml' => $contentTypes, '_rels/.rels' => $rels, 'xl/workbook.xml' => '<workbook/>']),
+        'docx-unordered' => zipFixture(['docProps/app.xml' => '<Properties/>', '[Content_Types].xml' => $contentTypes, 'word/document.xml' => '<w:document/>', '_rels/.rels' => $rels]),
+        'xlsx-unordered' => zipFixture(['docProps/app.xml' => '<Properties/>', '[Content_Types].xml' => $contentTypes, 'xl/workbook.xml' => '<workbook/>', '_rels/.rels' => $rels]),
+        'odt' => zipFixture(['mimetype' => 'application/vnd.oasis.opendocument.text', 'content.xml' => '<office:document-content/>']),
+        'ods' => zipFixture(['mimetype' => 'application/vnd.oasis.opendocument.spreadsheet', 'content.xml' => '<office:document-content/>']),
+        'zip' => zipFixture(['readme.txt' => 'Nije dokument.']),
+        'exe' => "MZ\x90\0\3\0\0\0".str_repeat("\0", 56)."PE\0\0",
+        'html' => '<html><body><script>alert(1)</script></body></html>',
+        'svg' => '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>',
+        'php' => '<?php echo "hacked"; ?>',
+        'jpeg' => jpegFixture(),
+    };
+}
+
+function jpegFixture(): string
+{
+    // Keep the fake file referenced: its temporary file is removed with it.
+    $image = UploadedFile::fake()->image('slika.jpg', 10, 10);
+
+    return (string) file_get_contents($image->getPathname());
+}
+
+/**
+ * An uploadable file with the given name and contents of documentFixture($kind).
+ */
+function documentUpload(string $name, string $kind): UploadedFile
+{
+    return UploadedFile::fake()->createWithContent($name, documentFixture($kind));
+}
+
+/**
+ * A zip archive with the given entries, in the given order.
+ *
+ * @param  array<string, string>  $entries
+ */
+function zipFixture(array $entries): string
+{
+    $path = tempnam(sys_get_temp_dir(), 'zip-');
+    $zip = new ZipArchive;
+    $zip->open($path, ZipArchive::OVERWRITE);
+
+    foreach ($entries as $name => $content) {
+        $zip->addFromString($name, $content);
+        // OpenDocument requires the mimetype entry to be stored uncompressed.
+        if ($name === 'mimetype') {
+            $zip->setCompressionName($name, ZipArchive::CM_STORE);
+        }
+    }
+
+    $zip->close();
+    $contents = (string) file_get_contents($path);
+    @unlink($path);
+
+    return $contents;
+}
+
+/**
+ * A minimal OLE compound file (the container of DOC and XLS) whose directory
+ * holds one stream with the given name, or only the root entry.
+ */
+function oleFixture(string $streamName = ''): string
+{
+    $free = 0xFFFFFFFF;
+    $endOfChain = 0xFFFFFFFE;
+
+    $header = "\xD0\xCF\x11\xE0\xA1\xB1\x1A\xE1".str_repeat("\0", 16)
+        .pack('vvvvV', 0x3E, 3, 0xFFFE, 9, 6)
+        .pack('VVVVVVVVVVV', 0, 0, 1, 1, 0, 4096, $endOfChain, 0, $endOfChain, 0, 0)
+        .str_repeat(pack('V', $free), 108);
+
+    // Sector 0: the FAT (itself, then the one-sector directory chain).
+    $fat = pack('VV', 0xFFFFFFFD, $endOfChain).str_repeat(pack('V', $free), 126);
+
+    $entry = function (string $name, int $type, int $child) use ($free, $endOfChain): string {
+        $utf16 = mb_convert_encoding($name, 'UTF-16LE', 'UTF-8')."\0\0";
+
+        return str_pad($utf16, 64, "\0").pack('v', strlen($utf16)).chr($type).chr(1)
+            .pack('VVV', $free, $free, $child).str_repeat("\0", 16).pack('V', 0).str_repeat("\0", 16)
+            .pack('VVV', $endOfChain, 0, 0);
+    };
+
+    // Sector 1: the directory.
+    $directory = $entry('Root Entry', 5, $streamName === '' ? $free : 1);
+
+    if ($streamName !== '') {
+        $directory .= $entry($streamName, 2, $free);
+    }
+
+    return $header.$fat.str_pad($directory, 512, "\0");
 }
 
 /**

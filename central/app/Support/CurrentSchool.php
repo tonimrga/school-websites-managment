@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\School;
 use App\Models\User;
+use Closure;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -17,6 +18,11 @@ use Illuminate\Support\Facades\Auth;
 class CurrentSchool
 {
     public const SESSION_KEY = 'current_school_id';
+
+    /**
+     * School temporarily forced by actingFor(), whoever is logged in.
+     */
+    protected ?int $override = null;
 
     /**
      * Whether a dashboard user is logged in, i.e. whether tenant scoping applies.
@@ -41,6 +47,10 @@ class CurrentSchool
      */
     public function idFor(User $user): ?int
     {
+        if ($this->override !== null) {
+            return $this->override;
+        }
+
         if ($user->isSuperAdmin()) {
             return $this->selectedSchoolId();
         }
@@ -61,6 +71,28 @@ class CurrentSchool
     public function select(School $school): void
     {
         session()->put(self::SESSION_KEY, $school->getKey());
+    }
+
+    /**
+     * Run system code (e.g. creating a new school's default content) in the
+     * context of the given school, whichever school the logged-in user is
+     * working on. Never call this with a school taken from user input.
+     *
+     * @template T
+     *
+     * @param  Closure(): T  $callback
+     * @return T
+     */
+    public function actingFor(School $school, Closure $callback): mixed
+    {
+        $previous = $this->override;
+        $this->override = (int) $school->getKey();
+
+        try {
+            return $callback();
+        } finally {
+            $this->override = $previous;
+        }
     }
 
     protected function selectedSchoolId(): ?int

@@ -32,6 +32,20 @@ it('opens SQLite database files in WAL mode', function () {
     }
 });
 
+it('keeps the upload limits in agreement', function () {
+    $documentsKb = config('cms.documents.max_upload_kb');
+
+    expect($documentsKb)->toBe(20 * 1024)
+        ->and(config('cms.images.max_upload_kb'))->toBe(10 * 1024)
+        ->and(config('media-library.max_file_size'))->toBe($documentsKb * 1024)
+        ->and(config('livewire.temporary_file_upload.rules'))->toContain("max:{$documentsKb}");
+});
+
+it('keeps document files off the public disk', function () {
+    expect(config('cms.documents.disk'))->not->toBe('public')
+        ->and(config('filesystems.disks.'.config('cms.documents.disk').'.visibility'))->not->toBe('public');
+});
+
 it('requires passwords of at least 12 characters', function () {
     Http::preventStrayRequests();
 

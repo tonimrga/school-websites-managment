@@ -75,6 +75,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Documents
+    |--------------------------------------------------------------------------
+    |
+    | Document files are kept on a non-public disk and only reach visitors
+    | through the download route, which sends them as attachments. Uploads
+    | are limited to max_upload_kb (also the Livewire temporary upload limit
+    | and media-library.max_file_size).
+    |
+    */
+
+    'documents' => [
+        'disk' => env('DOCUMENTS_DISK', 'local'),
+        'max_upload_kb' => 20 * 1024,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Trash
     |--------------------------------------------------------------------------
     |

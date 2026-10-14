@@ -1,14 +1,16 @@
 <?php
 
 use App\Models\Article;
+use App\Models\Document;
 use App\Models\School;
 use Database\Factories\ArticleFactory;
+use Database\Factories\DocumentFactory;
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Storage;
 
 /*
-| Soft-deleted articles are permanently deleted, with their files, 30 days
+| Soft-deleted articles and documents are permanently deleted, with their files, 30 days
 | after deletion by a daily scheduled command.
 */
 
@@ -74,4 +76,26 @@ it('is scheduled daily', function () {
 
     expect($event)->not->toBeNull()
         ->and($event->expression)->toBe('0 0 * * *');
+});
+
+it('permanently deletes documents trashed 30 or more days ago, with their files', function () {
+    Storage::fake('local');
+
+    $school = School::factory()->create();
+    $old = createDocument($school, configure: fn (DocumentFactory $f) => $f->withFile());
+    $recent = createDocument($school, configure: fn (DocumentFactory $f) => $f->withFile());
+    $path = $old->file()->getPathRelativeToRoot();
+
+    $this->travel(-31)->days();
+    $old->delete();
+    $this->travelBack();
+    $recent->delete();
+
+    $this->artisan('content:purge-trashed')->assertSuccessful();
+
+    expect(Document::withTrashed()->find($old->id))->toBeNull()
+        ->and(Document::withTrashed()->find($recent->id))->not->toBeNull();
+
+    Storage::disk('local')->assertMissing($path);
+    Storage::disk('local')->assertExists($recent->file()->getPathRelativeToRoot());
 });

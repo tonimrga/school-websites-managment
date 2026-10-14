@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Article;
+use App\Models\Document;
 use App\Models\Scopes\SchoolScope;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -25,6 +26,7 @@ class PurgeTrashedContent extends Command
      */
     public const MODELS = [
         Article::class,
+        Document::class,
     ];
 
     public function handle(): int

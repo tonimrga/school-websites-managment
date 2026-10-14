@@ -50,7 +50,7 @@ return [
      * The maximum file size of an item in bytes.
      * Adding a larger file will result in an exception.
      */
-    'max_file_size' => 1024 * 1024 * 10, // 10MB
+    'max_file_size' => 1024 * 1024 * 20, // 20MB: documents. Images are limited to cms.images.max_upload_kb.
 
     /*
      * Uploads whose file name contains any of these extensions will be rejected.
@@ -72,7 +72,7 @@ return [
      * in `shell.php.jpg`) is rejected even if the final extension is allowed.
      * Leave `null` to disable allowlisting.
      */
-    'allowed_extensions' => null,
+    'allowed_extensions' => ['jpg', 'jpeg', 'png', 'webp', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'odt', 'ods'],
 
     /*
      * This queue connection will be used to generate derived and responsive images.

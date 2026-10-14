@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\SchoolTheme;
+use App\Models\Scopes\SchoolScope;
 use Database\Factories\SchoolFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,7 +11,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A tenant. Every content row belongs to exactly one school.
+ * A tenant. Every content row belongs to exactly one school. A new school
+ * gets the default document categories.
  */
 #[Fillable([
     'name', 'slug', 'site_url', 'theme',
@@ -37,11 +39,26 @@ class School extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::created(function (School $school): void {
+            DocumentCategory::createDefaultsFor($school);
+        });
+    }
+
     /**
      * @return HasMany<User, $this>
      */
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /**
+     * @return HasMany<DocumentCategory, $this>
+     */
+    public function documentCategories(): HasMany
+    {
+        return $this->hasMany(DocumentCategory::class)->withoutGlobalScope(SchoolScope::class);
     }
 }

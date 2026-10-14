@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\SchoolTheme;
 use App\Enums\UserRole;
+use App\Models\DocumentCategory;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -51,6 +52,9 @@ class DemoSchoolsSeeder extends Seeder
 
         foreach ($schools as $data) {
             $school = School::updateOrCreate(['slug' => $data['school']['slug']], $data['school']);
+
+            // New schools get them on create; this adds any missing to existing ones.
+            DocumentCategory::createDefaultsFor($school);
 
             $editor = User::firstOrNew(['email' => $data['editor']['email']]);
             $editor->name = $data['editor']['name'];
