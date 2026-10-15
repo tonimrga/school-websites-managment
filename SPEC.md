@@ -98,7 +98,6 @@ There are exactly two roles: one super admin for the whole system, and one edito
 | Create, edit, delete, reorder documents | Any school | Own school only |
 | Create, rename, delete document categories | Any school | No |
 | Reorder document categories | Any school | Own school only |
-| Edit pages (About us) | Any school | Own school only |
 | View activity log | All schools | No |
 | Change own password | Yes | Yes |
 
@@ -196,19 +195,9 @@ Indexes: `(school_id, status, published_at)`, unique `(school_id, slug)`.
 
 Index: `(school_id, document_category_id, sort_order)`.
 
-### pages
+Each new school is created with a default set of document categories.
 
-| Field | Type | Notes |
-| --- | --- | --- |
-| id | bigint |  |
-| school_id | FK |  |
-| key | string | `about` in version 1; unique per school |
-| title | string |  |
-| body | longtext | Sanitized HTML |
-| image | media, nullable | Optional header image |
-| timestamps |  |  |
-
-Each new school is created with an empty `about` page and a default set of document categories.
+There is no pages table: the "O nama" page is a hand-written file on each school site (see section 7).
 
 ### Media rules
 
@@ -262,10 +251,6 @@ The dashboard is one Filament panel at `/admin` on the central server, fully in 
 - Super admin: create, rename, delete. Editor: drag-and-drop reorder only (no create, rename or delete buttons shown).
 - A category with documents cannot be deleted until its documents are moved or deleted.
 
-### Pages (Stranice)
-
-- Edit the "O nama" (About us) page: title, rich text body, optional image.
-
 ### School settings (Postavke škole)
 
 - Editor: logo, address, phone, email, office hours, map embed URL, contact note, social links.
@@ -273,7 +258,7 @@ The dashboard is one Filament panel at `/admin` on the central server, fully in 
 
 ### Super admin only
 
-- **Schools:** list, create, edit, deactivate. Creating a school also creates its `about` page and default document categories. The schools list shows each school's storage use (total size of its images and documents).
+- **Schools:** list, create, edit, deactivate. Creating a school also creates its default document categories. The schools list shows each school's storage use (total size of its images and documents).
 - **Users:** list, create editor (assign to one school), edit, deactivate, send password reset.
 - **School switcher:** a dropdown in the top bar that sets which school's content the super admin is working on.
 - **Activity log:** who created, changed, published or deleted what, and when; filterable by school and user.
@@ -292,14 +277,13 @@ Base URL: `https://<central-domain>/api/v1/schools/{slug}`
 
 | Method + path | Used by page | Returns |
 | --- | --- | --- |
-| `GET /` | Contact, generic | `school` only |
-| `GET /home` | Homepage | `school`, `featured` (up to 3 articles), `latest` (6 newest non-featured articles), `about_excerpt` |
+| `GET /` | Contact, About us, generic | `school` only |
+| `GET /home` | Homepage | `school`, `featured` (up to 3 articles), `latest` (6 newest non-featured articles) |
 | `GET /articles?page=N` | News list | `school`, `data` (12 per page; featured first, then newest), `meta` (pagination) |
 | `GET /articles/{article_slug}` | Article detail | `school`, `article` (full body, cover, gallery), `recent` (3 other newest articles) |
 | `GET /documents` | Documents | `school`, `categories` (ordered), each with its published `documents` (ordered) |
 | `GET /documents?category={category_slug}` | Documents, filtered | Same shape, only that category's documents; all categories still listed for the filter |
-| `GET /pages/{key}` | About us | `school`, `page` |
-| `GET /sitemap` | `sitemap.xml` on school site | List of article slugs with `updated_at`, plus static page paths |
+| `GET /sitemap` | `sitemap.xml` on school site | List of article slugs with `updated_at` (the school site adds its fixed pages itself) |
 
 ### Visibility rules
 
@@ -338,14 +322,23 @@ Base URL: `https://<central-domain>/api/v1/schools/{slug}`
 
 ### Errors and limits
 
-- 404 `{"error": "not_found"}` for unknown or inactive school, unknown or unpublished article, unknown category or page.
+- 404 `{"error": "not_found"}` for unknown or inactive school, unknown or unpublished article, unknown category.
 - 429 when rate-limited: 300 requests per minute per IP (school sites call from their host's IP, so the limit is generous).
 - Responses are UTF-8 JSON, keys in `snake_case`, dates in ISO 8601 with Europe/Zagreb offset.
 - Breaking changes go into `/api/v2`; `/api/v1` stays stable once school sites are installed.
 
 ## 7. Public school site
 
-The school site is one folder of plain PHP files that is identical for every school except `config.php`. It has no database, no Composer, and no build step, so it can later run on any shared hosting.
+The school site is one folder of plain PHP files: a blueprint that is copied once per school. It has no database, no Composer, and no build step, so it can later run on any shared hosting.
+
+### Per-school files
+
+Only two things differ between schools; everything else is shared and identical:
+
+- `config.php`: API address, school slug, site URL.
+- `pages/`: hand-written static pages, maintained by a technical person. Version 1 has exactly one, `pages/o-nama.php` (About us), containing plain HTML that is rendered inside the shared layout.
+
+Setting up a school: create it in the dashboard, copy the blueprint folder, edit `config.php`, write `pages/o-nama.php`, upload the folder to the school's hosting. Updating the shared code later: copy the new blueprint over every school's folder except `config.php` and `pages/`.
 
 ### Routes
 
@@ -355,7 +348,7 @@ The school site is one folder of plain PHP files that is identical for every sch
 | `/vijesti` and `/vijesti?stranica=2` | News list | `/articles?page=N` |
 | `/vijesti/{slug}` | Article | `/articles/{slug}` |
 | `/dokumenti` and `/dokumenti?kategorija={slug}` | Documents | `/documents` |
-| `/o-nama` | About us | `/pages/about` |
+| `/o-nama` | About us (content from `pages/o-nama.php`) | `/` |
 | `/kontakt` | Contact | `/` |
 | `/sitemap.xml` | Sitemap | `/sitemap` |
 | `/robots.txt` | Static file | none |
@@ -366,7 +359,9 @@ Pretty URLs use an `.htaccess` rewrite to `index.php` (Apache and LiteSpeed, whi
 
 ```
 school-site/
-  config.php            # API_BASE_URL, SCHOOL_SLUG, SITE_URL
+  config.php            # per school: API_BASE_URL, SCHOOL_SLUG, SITE_URL
+  pages/
+    o-nama.php          # per school: hand-written About us content (HTML)
   index.php             # front controller and router
   .htaccess             # rewrite rules, security headers
   robots.txt
@@ -376,7 +371,7 @@ school-site/
   templates/
     layout.php          # <head>, header, nav, footer
     home.php, news.php, article.php, documents.php,
-    about.php, contact.php, 404.php, unavailable.php
+    static-page.php, contact.php, 404.php, unavailable.php
     partials/           # article card, pagination, gallery, document row
   assets/
     css/style.css       # layout + themes as CSS variables
@@ -386,19 +381,19 @@ school-site/
 ### Page content
 
 - **Layout:** header with logo, school name and navigation (Naslovna, Vijesti, Dokumenti, O nama, Kontakt); mobile menu; footer with address, phone, email, social links, and a link to the old website if set.
-- **Homepage:** featured articles as large cards, latest news grid, short "O nama" excerpt with link, contact block.
+- **Homepage:** featured articles as large cards, latest news grid, contact block.
 - **News list:** cards with cover, title, date, excerpt; featured articles first and marked; pagination; link to the old site's news archive at the end.
 - **Article:** title, date, cover image, body, gallery grid that opens a lightbox, three recent articles.
 - **Documents:** category filter as links; documents grouped by category, each with title, date, description, file type and size, and a download link.
-- **About us:** title, optional image, body.
-- **Contact:** address, clickable phone (`tel:`) and email (`mailto:`), office hours, map embed, contact note. No form.
+- **About us:** the hand-written content of `pages/o-nama.php` inside the shared layout. Every school site has this page.
+- **Contact:** address, clickable phone (`tel:`) and email (`mailto:`), office hours, map embed, contact note, all from the school settings in the dashboard. No form. Every school site has this page.
 
 ### SEO and link previews
 
 - `<html lang="hr">`, unique `<title>` and meta description per page.
 - Open Graph and Twitter card tags on every page; on articles `og:type=article`, `og:image` = the cover's `large` version.
 - Canonical URL built from `SITE_URL`.
-- `sitemap.xml` generated from the API's `/sitemap` response.
+- `sitemap.xml` generated from the API's `/sitemap` response plus the fixed pages (`/`, `/vijesti`, `/dokumenti`, `/o-nama`, `/kontakt`).
 
 ### Themes
 
@@ -414,7 +409,7 @@ Adding a theme = adding one CSS block and one enum value. All CSS uses the varia
 
 ### Behavior
 
-- All output is escaped with `htmlspecialchars` except article and page `body`, which is already sanitized by the central server.
+- All API data is escaped with `htmlspecialchars` except article `body`, which is already sanitized by the central server. Files in `pages/` are trusted hand-written HTML and are included as they are.
 - API timeout or connection error → `unavailable.php` with HTTP 503 and a friendly message.
 - API 404 → `404.php` with HTTP 404.
 - Responsive, mobile-first; images use `srcset` with the `thumb` and `large` versions and `loading="lazy"`.
@@ -435,7 +430,7 @@ Laravel and Filament cover password hashing, sessions, CSRF, SQL injection and t
 
 ### Tenant isolation (highest priority)
 
-- Every content model (`Article`, `Document`, `DocumentCategory`, `Page`) uses a global scope that filters by the current user's `school_id`. The super admin's scope uses the school selected in the switcher.
+- Every content model (`Article`, `Document`, `DocumentCategory`) uses a global scope that filters by the current user's `school_id`. The super admin's scope uses the school selected in the switcher.
 - `school_id` is never accepted from form input; it is set from the current school on create.
 - Policies check school ownership on view, update, delete and reorder actions.
 - Media upload and reorder endpoints check that the parent record belongs to the user's school.
@@ -444,7 +439,7 @@ Laravel and Filament cover password hashing, sessions, CSRF, SQL injection and t
 
 ### Content and uploads
 
-- Rich text (`articles.body`, `pages.body`) is sanitized on save with an allow-list: `p, br, h2, h3, h4, strong, em, u, s, ul, ol, li, a[href], blockquote, table, thead, tbody, tr, th, td`. Links allow only `http`, `https`, `mailto`, `tel`. **[test]**
+- Rich text (`articles.body`) is sanitized on save with an allow-list: `p, br, h2, h3, h4, strong, em, u, s, ul, ol, li, a[href], blockquote, table, thead, tbody, tr, th, td`. Links allow only `http`, `https`, `mailto`, `tel`. **[test]**
 - Uploads are validated by real MIME type and extension against the allow-lists in section 4; SVG, HTML and executable files are rejected. **[test]**
 - Uploaded files get random names, and the upload directory never executes scripts.
 - Downloads are sent with `Content-Disposition: attachment` for documents and `X-Content-Type-Options: nosniff`.
@@ -486,7 +481,7 @@ Everything runs on one machine: the central Laravel app on one port and one or m
 
 - the super admin account (email and password from `.env`),
 - two schools with different themes, each with an editor account,
-- for each school: the about page, default document categories, about 15 articles (some featured, some drafts, one scheduled in the future) with covers and galleries, and about 20 documents.
+- for each school: default document categories, about 15 articles (some featured, some drafts, one scheduled in the future) with covers and galleries, and about 20 documents.
 
 Two schools are needed to check tenant isolation by hand.
 
@@ -494,7 +489,7 @@ Two schools are needed to check tenant isolation by hand.
 
 - Run with PHP's built-in server from the `school-site/` folder: `php -S localhost:8081 index.php`.
 - `config.php` points to `http://localhost:8000/api/v1` and one school slug.
-- `config.php` reads `SCHOOL_SLUG` and `SITE_URL` from environment variables when they are set, so a second school can run at the same time: `SCHOOL_SLUG=os-druga-skola SITE_URL=http://localhost:8082 php -S localhost:8082 index.php`.
+- `config.php` reads `SCHOOL_SLUG` and `SITE_URL` from environment variables when they are set, so a second school can run at the same time: `SCHOOL_SLUG=os-druga-skola SITE_URL=http://localhost:8082 php -S localhost:8082 index.php`. Both local schools then share the example `pages/o-nama.php`.
 
 ## 10. Implementation phases for Claude Code
 
@@ -525,9 +520,9 @@ repo/
 2. **Schools, users and tenant isolation.** `schools` table and Filament resource, user management, school switcher for the super admin, `BelongsToSchool` trait, policies, and the isolation test suite (using a placeholder content model). Done when all isolation tests pass.
 3. **Articles.** Model, media library collections (cover, gallery with order and captions), images resized to max 2000 px with metadata stripped on upload, conversions generated on save (no queue), gallery limited to 30 images, HTML sanitizer, draft/publish/schedule, featured flag, dashboard preview, soft delete and restore with automatic purge after 30 days, activity log. Done when an editor can publish an article with a gallery and isolation tests cover articles.
 4. **Documents and categories.** Categories with drag-and-drop order (editor and super admin) and create, rename and delete with delete protection (super admin only); documents with file validation, drag-and-drop order within a category, and file replacement. Default categories created with each new school.
-5. **Pages and school settings.** "O nama" page, school settings form with role-based fields, dashboard home screen.
+5. **School settings and home screen.** School settings form ("Postavke doma") with role-based fields and logo, dashboard home screen, storage use on the schools list.
 6. **Public API.** All endpoints from section 6 as API Resources, visibility rules, 404 handling, rate limiting, full test coverage of visibility. Done when every endpoint matches the documented shape.
-7. **School site.** Router, API client, all templates, three themes, gallery lightbox, SEO and Open Graph tags, sitemap, error pages, accessibility pass. Done when both demo schools work locally against the central app.
+7. **School site.** Router, API client, all templates, example `pages/o-nama.php`, three themes, gallery lightbox, SEO and Open Graph tags, sitemap, error pages, accessibility pass. Done when both demo schools work locally against the central app.
 8. **Demo data and final review.** Complete the demo seeder from section 9, run the full test suite, go through the security requirements in section 8, and click through the dashboard as each role and both school sites.
 
 ### Open questions

@@ -7,6 +7,8 @@ use App\Filament\Resources\Schools\Pages\ListSchools;
 use App\Models\School;
 use App\Models\User;
 use Filament\Actions\Testing\TestAction;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 function validSchoolData(array $overrides = []): array
@@ -91,6 +93,20 @@ describe('super admin', function () {
         expect($school->fresh())
             ->name->toBe('Novi naziv')
             ->theme->toBe(SchoolTheme::Red);
+    });
+
+    it('uploads a logo for the edited school', function () {
+        Storage::fake('public');
+        $school = School::factory()->create();
+        $other = School::factory()->create();
+
+        Livewire::test(EditSchool::class, ['record' => $school->getRouteKey()])
+            ->fillForm(['logo' => [UploadedFile::fake()->image('logo.png', 300, 300)]])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        expect($school->fresh()->getFirstMedia('logo')?->name)->toBe('logo')
+            ->and($other->fresh()->getMedia('logo'))->toHaveCount(0);
     });
 
     it('deactivates and reactivates a school', function () {

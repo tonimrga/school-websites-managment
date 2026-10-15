@@ -9,6 +9,7 @@ use App\Models\Activity;
 use App\Models\Article;
 use App\Models\Document;
 use App\Models\DocumentCategory;
+use App\Models\School;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -56,6 +57,7 @@ class ActivityResource extends Resource
         Article::class => 'Vijest',
         Document::class => 'Dokument',
         DocumentCategory::class => 'Kategorija dokumenata',
+        School::class => 'Dom',
     ];
 
     public static function infolist(Schema $schema): Schema

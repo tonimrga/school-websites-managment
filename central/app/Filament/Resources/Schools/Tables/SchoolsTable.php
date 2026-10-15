@@ -10,6 +10,8 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Number;
 
 class SchoolsTable
 {
@@ -17,6 +19,7 @@ class SchoolsTable
     {
         return $table
             ->defaultSort('name')
+            ->modifyQueryUsing(fn (Builder $query): Builder => $query->withStorageBytes())
             ->columns([
                 TextColumn::make('name')
                     ->label('Naziv')
@@ -34,6 +37,11 @@ class SchoolsTable
                 TextColumn::make('users_count')
                     ->label('Korisnika')
                     ->counts('users'),
+                TextColumn::make('storage_bytes')
+                    ->label('Prostor')
+                    ->formatStateUsing(fn (int|string|null $state): string => Number::fileSize((int) $state, maxPrecision: 1))
+                    ->tooltip('Fotografije, logo i dokumenti, uključujući one u smeću; bez umanjenih verzija fotografija.')
+                    ->sortable(query: fn (Builder $query, string $direction): Builder => $query->orderBy('storage_bytes', $direction)),
                 IconColumn::make('is_active')
                     ->label('Aktivan')
                     ->boolean(),

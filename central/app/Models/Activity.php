@@ -8,15 +8,20 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Spatie\Activitylog\Models\Activity as BaseActivity;
 
 /**
- * Activity log entry. school_id is copied from the subject so the log can be
- * filtered by school. Only the super admin can read the log.
+ * Activity log entry. school_id is copied from the subject (or is the subject
+ * itself, for school settings) so the log can be filtered by school. Only the
+ * super admin can read the log.
  */
 class Activity extends BaseActivity
 {
     protected static function booted(): void
     {
         static::creating(function (Activity $activity): void {
-            $activity->school_id ??= $activity->subject?->getAttribute('school_id');
+            $subject = $activity->subject;
+
+            $activity->school_id ??= $subject instanceof School
+                ? $subject->getKey()
+                : $subject?->getAttribute('school_id');
         });
     }
 

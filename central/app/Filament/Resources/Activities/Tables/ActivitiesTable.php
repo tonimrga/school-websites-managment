@@ -74,7 +74,9 @@ class ActivitiesTable
     public static function subjectLabel(Activity $activity): string
     {
         $type = ActivityResource::SUBJECT_LABELS[$activity->subject_type] ?? class_basename((string) $activity->subject_type);
+        // Schools and categories have a name instead of a title.
         $title = $activity->subject?->getAttribute('title')
+            ?? $activity->subject?->getAttribute('name')
             ?? static::changes($activity, 'attributes')['title']
             ?? static::changes($activity, 'old')['title']
             ?? "#{$activity->subject_id}";

@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Articles\Pages;
 
 use App\Exceptions\ArticleNotPublishable;
 use App\Filament\Resources\Articles\ArticleResource;
+use App\Filament\Resources\Articles\Schemas\ArticleForm;
 use App\Models\Article;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -22,6 +23,16 @@ class CreateArticle extends CreateRecord
 
     public function createAndPublish(): void
     {
+        // The button is disabled until then; this covers a crafted request.
+        if (($missing = $this->missingForPublishing()) !== []) {
+            Notification::make()
+                ->title('Za objavu nedostaje: '.implode(', ', $missing).'.')
+                ->warning()
+                ->send();
+
+            return;
+        }
+
         $this->publishAfterCreate = true;
 
         $this->create();
@@ -55,8 +66,18 @@ class CreateArticle extends CreateRecord
     {
         return Action::make('createAndPublish')
             ->label('Objavi')
-            ->color('success')
+            // Gray while disabled, so it does not look clickable.
+            ->color(fn (): string => $this->missingForPublishing() === [] ? 'success' : 'gray')
+            ->disabled(fn (): bool => $this->missingForPublishing() !== [])
             ->action('createAndPublish');
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function missingForPublishing(): array
+    {
+        return ArticleForm::missingForPublishing($this->data ?? []);
     }
 
     protected function afterCreate(): void
@@ -78,6 +99,11 @@ class CreateArticle extends CreateRecord
                 ->persistent()
                 ->send();
         }
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('index');
     }
 
     protected function getCreatedNotificationTitle(): ?string

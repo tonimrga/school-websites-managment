@@ -29,6 +29,27 @@ describe('SchoolPolicy', function () {
         expect($this->admin->can('delete', $this->schoolA))->toBeFalse()
             ->and($this->admin->can('deleteAny', School::class))->toBeFalse();
     });
+
+    it('lets an editor change the settings of their own school only', function () {
+        expect($this->editorA->can('updateSettings', $this->schoolA))->toBeTrue()
+            ->and($this->editorA->can('updateSettings', $this->schoolB))->toBeFalse()
+            ->and($this->admin->can('updateSettings', $this->schoolA))->toBeTrue()
+            ->and($this->admin->can('updateSettings', $this->schoolB))->toBeTrue();
+    });
+
+    it('leaves the basic school settings to the super admin', function () {
+        expect($this->admin->can('updateAdminSettings', $this->schoolA))->toBeTrue()
+            ->and($this->editorA->can('updateAdminSettings', $this->schoolA))->toBeFalse();
+    });
+
+    it('denies school settings to inactive users', function () {
+        $this->editorA->forceFill(['is_active' => false])->save();
+        $this->admin->forceFill(['is_active' => false])->save();
+
+        expect($this->editorA->can('updateSettings', $this->schoolA))->toBeFalse()
+            ->and($this->admin->can('updateSettings', $this->schoolA))->toBeFalse()
+            ->and($this->admin->can('updateAdminSettings', $this->schoolA))->toBeFalse();
+    });
 });
 
 describe('UserPolicy', function () {

@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Documents\Pages;
 
 use App\Filament\Resources\Documents\DocumentResource;
+use App\Filament\Resources\Documents\Schemas\DocumentForm;
+use Filament\Actions\Action;
 use Filament\Resources\Pages\CreateRecord;
 
 class CreateDocument extends CreateRecord
@@ -21,5 +23,23 @@ class CreateDocument extends CreateRecord
                 ->formId('form')
                 ->keyBindings([]),
         ];
+    }
+
+    /**
+     * Disabled and gray until the required fields are filled in. Used by both
+     * the header and the bottom button.
+     */
+    protected function getCreateFormAction(): Action
+    {
+        $isComplete = fn (): bool => DocumentForm::missingForSaving($this->data ?? []) === [];
+
+        return parent::getCreateFormAction()
+            ->disabled(fn (): bool => ! $isComplete())
+            ->color(fn (): string => $isComplete() ? 'primary' : 'gray');
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return static::getResource()::getUrl('index');
     }
 }

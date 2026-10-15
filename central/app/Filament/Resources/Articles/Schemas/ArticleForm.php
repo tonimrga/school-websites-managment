@@ -27,6 +27,11 @@ class ArticleForm
     public const GDPR_REMINDER = 'Objavljujete li fotografije učenika, provjerite imate li suglasnost roditelja.';
 
     /**
+     * Marks the fields that are optional for a draft but needed to publish.
+     */
+    public const PUBLISH_HINT = 'Potrebno za objavu';
+
+    /**
      * Matches the HTML sanitizer's allow-list; no inline images in version 1.
      */
     public const TOOLBAR_BUTTONS = [
@@ -58,7 +63,8 @@ class ArticleForm
                     ->label('Naslov')
                     ->required()
                     ->maxLength(200)
-                    ->live(onBlur: true)
+                    // Debounced rather than on blur, so "Objavi" is enabled before the editor clicks it.
+                    ->live(debounce: 500)
                     ->afterStateUpdated(function (Get $get, Set $set, ?string $old, ?string $state): void {
                         // Follow the title until the slug is edited by hand.
                         if (blank($get('slug')) || $get('slug') === Str::slug((string) $old)) {
@@ -86,6 +92,8 @@ class ArticleForm
                     ->rows(3),
                 RichEditor::make('body')
                     ->label('Tekst')
+                    ->hint(self::PUBLISH_HINT)
+                    ->live(debounce: 500)
                     ->toolbarButtons(self::TOOLBAR_BUTTONS),
             ]);
     }
@@ -99,7 +107,9 @@ class ArticleForm
                     ->warning(),
                 static::imageUpload('cover')
                     ->label('Naslovna fotografija')
-                    ->helperText('Potrebna za objavu. Prikazuje se u popisu vijesti i kod dijeljenja na društvenim mrežama.')
+                    ->hint(self::PUBLISH_HINT)
+                    ->live()
+                    ->helperText('Prikazuje se u popisu vijesti i kod dijeljenja na društvenim mrežama.')
                     ->imageEditor()
                     ->imageEditorAspectRatioOptions([null, '16:9', '4:3'])
                     // Fixed height, so the box doesn't grow while the image loads.
@@ -124,6 +134,11 @@ class ArticleForm
                 Text::make(fn (?Article $record): string => $record?->statusLabel() ?? 'Skica')
                     ->badge()
                     ->color(fn (?Article $record): string => $record?->statusColor() ?? 'gray'),
+                // Why "Objavi" is disabled; updates as the fields are filled in.
+                Text::make(fn (Get $get): string => 'Za objavu nedostaje: '.implode(', ', static::missingForPublishing(static::publishingState($get))).'.')
+                    ->color('warning')
+                    ->visible(fn (Get $get, ?Article $record): bool => $record?->isPublished() !== true
+                        && static::missingForPublishing(static::publishingState($get)) !== []),
                 DateTimePicker::make('published_at')
                     ->label('Datum objave')
                     ->seconds(false)
@@ -135,10 +150,63 @@ class ArticleForm
     }
 
     /**
+     * What the form state still lacks for publishing, as Croatian labels; the
+     * form-side twin of Article::missingForPublishing(), which stays the
+     * authoritative check when publishing.
+     *
+     * @param  array<string, mixed>  $data  form state with title, body and cover
+     * @return list<string>
+     */
+    public static function missingForPublishing(array $data): array
+    {
+        return array_values(array_filter([
+            blank($data['title'] ?? null) ? 'naslov' : null,
+            static::hasText($data['body'] ?? null) ? null : 'tekst',
+            array_filter((array) ($data['cover'] ?? [])) === [] ? 'naslovna fotografija' : null,
+        ]));
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    protected static function publishingState(Get $get): array
+    {
+        return ['title' => $get('title'), 'body' => $get('body'), 'cover' => $get('cover')];
+    }
+
+    /**
+     * The editor keeps the body as a TipTap document (nested arrays with
+     * "text" nodes); saved articles and tests may hold HTML.
+     */
+    protected static function hasText(mixed $body): bool
+    {
+        if (is_string($body)) {
+            return Article::excerptFrom($body) !== null;
+        }
+
+        if (! is_array($body)) {
+            return false;
+        }
+
+        if (is_string($body['text'] ?? null) && trim($body['text']) !== '') {
+            return true;
+        }
+
+        foreach ($body as $value) {
+            if (is_array($value) && static::hasText($value)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Images are checked by real MIME type and by extension; the media
      * library additionally resizes them and strips metadata before storing.
+     * Also used for the school logo.
      */
-    protected static function imageUpload(string $collection): SpatieMediaLibraryFileUpload
+    public static function imageUpload(string $collection): SpatieMediaLibraryFileUpload
     {
         return SpatieMediaLibraryFileUpload::make($collection)
             ->collection($collection)

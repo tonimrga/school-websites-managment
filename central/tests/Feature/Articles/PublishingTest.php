@@ -141,14 +141,63 @@ describe('dashboard', function () {
             ->and($article->getMedia('gallery')->pluck('name')->all())->toBe(['prva', 'druga']);
     });
 
-    it('saves a draft when publishing on create is missing the cover', function () {
+    it('keeps "Objavi" disabled on create until title, text and cover are filled in', function () {
+        $page = Livewire::test(CreateArticle::class)
+            ->assertActionDisabled('createAndPublish')
+            ->assertActionHasColor('createAndPublish', 'gray')
+            ->assertSee('Za objavu nedostaje: naslov, tekst, naslovna fotografija.')
+            ->fillForm(['title' => 'Dan otvorenih vrata', 'body' => '<p>Tekst.</p>'])
+            ->assertActionDisabled('createAndPublish')
+            ->assertSee('Za objavu nedostaje: naslovna fotografija.')
+            ->fillForm(['cover' => UploadedFile::fake()->image('naslovna.jpg', 800, 600)])
+            ->assertActionEnabled('createAndPublish')
+            ->assertActionHasColor('createAndPublish', 'success')
+            ->assertDontSee('Za objavu nedostaje');
+
+        // Saving as a draft needs only the title.
+        $page->assertActionEnabled('create');
+    });
+
+    it('marks the text and cover as needed for publishing', function () {
+        Livewire::test(CreateArticle::class)
+            ->assertSee(ArticleForm::PUBLISH_HINT);
+    });
+
+    it('creates nothing when publishing is forced with fields missing', function () {
         Livewire::test(CreateArticle::class)
             ->fillForm(['title' => 'Bez fotografije', 'body' => '<p>Tekst.</p>'])
             ->call('createAndPublish')
-            ->assertHasNoFormErrors()
-            ->assertNotified('Vijest je spremljena kao skica.');
+            ->assertNotified('Za objavu nedostaje: naslovna fotografija.')
+            ->assertNoRedirect();
 
-        expect(Article::sole()->status)->toBe(ArticleStatus::Draft);
+        expect(Article::count())->toBe(0);
+    });
+
+    it('keeps "Objavi" disabled on the edit page while something is missing', function () {
+        $withoutCover = createArticle($this->school);
+
+        Livewire::test(EditArticle::class, ['record' => $withoutCover->getRouteKey()])
+            ->assertActionDisabled('publish')
+            ->assertSee('Za objavu nedostaje: naslovna fotografija.')
+            ->fillForm(['cover' => [UploadedFile::fake()->image('naslovna.jpg', 800, 600)]])
+            ->assertActionEnabled('publish');
+
+        $complete = createArticle($this->school, configure: fn (ArticleFactory $f) => $f->withCover());
+
+        Livewire::test(EditArticle::class, ['record' => $complete->getRouteKey()])
+            ->assertActionEnabled('publish')
+            ->fillForm(['title' => ''])
+            ->assertActionDisabled('publish');
+    });
+
+    it('reads the editor\'s TipTap document when checking the text', function () {
+        $doc = fn (string $text): array => ['type' => 'doc', 'content' => [
+            ['type' => 'paragraph', 'content' => $text === '' ? [] : [['type' => 'text', 'text' => $text]]],
+        ]];
+
+        expect(ArticleForm::missingForPublishing(['title' => 'Naslov', 'body' => $doc('Tekst'), 'cover' => ['uuid' => 'uuid']]))->toBe([])
+            ->and(ArticleForm::missingForPublishing(['title' => 'Naslov', 'body' => $doc(''), 'cover' => ['uuid' => 'uuid']]))->toBe(['tekst'])
+            ->and(ArticleForm::missingForPublishing(['title' => 'Naslov', 'body' => $doc('   '), 'cover' => []]))->toBe(['tekst', 'naslovna fotografija']);
     });
 
     it('saves pending changes and publishes from the edit page', function () {

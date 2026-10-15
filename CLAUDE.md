@@ -28,7 +28,8 @@ This repository holds a multi-tenant CMS for school websites. The full specifica
 ## Conventions: school site
 
 - Plain PHP 8.1+. No frameworks, no Composer, no build step.
-- Escape all output with `e()`; the only exception is article and page `body`, which arrives sanitized from the API.
+- Escape all output with `e()`; the only exception is article `body`, which arrives sanitized from the API.
+- Per-school files are only `config.php` and `pages/` (hand-written static pages such as `pages/o-nama.php`). Everything else is shared and identical for every school.
 - One API call per page view, made server-side with cURL.
 
 ## Running locally

@@ -67,7 +67,8 @@ it('logs the whole life cycle of an article with user and school', function () {
         ->callAction(TestAction::make(RestoreAction::class)->table($article));
     expect(lastActivity())->event->toBe('restored');
 
-    $activities = Activity::query()->orderBy('id')->get();
+    // Creating the school in beforeEach is logged too; only the article matters here.
+    $activities = Activity::query()->where('subject_type', $article->getMorphClass())->orderBy('id')->get();
 
     expect($activities->pluck('event')->all())
         ->toBe(['created', 'updated', 'published', 'unpublished', 'deleted', 'restored'])
