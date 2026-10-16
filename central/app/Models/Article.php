@@ -50,6 +50,13 @@ class Article extends Model implements HasMedia
 
     public const EXCERPT_LENGTH = 300;
 
+    /**
+     * Conversion sizes; see ConversionSize for the sizes the API reports.
+     */
+    public const THUMB_SIZE = [400, 300];
+
+    public const LARGE_WIDTH = 1600;
+
     protected $attributes = [
         'status' => 'draft',
         'is_featured' => false,
@@ -244,12 +251,12 @@ class Article extends Model implements HasMedia
     public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('thumb')
-            ->fit(Fit::Crop, 400, 300)
+            ->fit(Fit::Crop, ...self::THUMB_SIZE)
             ->format('webp')
             ->nonQueued();
 
         $this->addMediaConversion('large')
-            ->width(1600, [Constraint::PreserveAspectRatio, Constraint::DoNotUpsize])
+            ->width(self::LARGE_WIDTH, [Constraint::PreserveAspectRatio, Constraint::DoNotUpsize])
             ->format('webp')
             ->nonQueued();
     }

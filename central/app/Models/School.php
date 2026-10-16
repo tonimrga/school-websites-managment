@@ -54,6 +54,15 @@ class School extends Model implements HasMedia
         'name', 'slug', 'site_url', 'theme', 'old_site_url', 'is_active',
     ];
 
+    /**
+     * Logo conversions fit within these many pixels; see ConversionSize.
+     */
+    public const LOGO_SMALL = 256;
+
+    public const LOGO_LARGE = 1200;
+
+    public const SOCIAL_NETWORKS = ['facebook', 'instagram', 'youtube'];
+
     protected $attributes = [
         'theme' => 'blue',
         'is_active' => true,
@@ -143,12 +152,12 @@ class School extends Model implements HasMedia
     public function registerMediaConversions(?Media $media = null): void
     {
         $this->addMediaConversion('small')
-            ->fit(Fit::Max, 256, 256)
+            ->fit(Fit::Max, self::LOGO_SMALL, self::LOGO_SMALL)
             ->format('webp')
             ->nonQueued();
 
         $this->addMediaConversion('large')
-            ->fit(Fit::Max, 1200, 1200)
+            ->fit(Fit::Max, self::LOGO_LARGE, self::LOGO_LARGE)
             ->format('webp')
             ->nonQueued();
     }

@@ -2,6 +2,7 @@
 
 namespace App\Support\MediaLibrary;
 
+use App\Support\ConversionSize;
 use App\Support\DocumentFileType;
 use App\Support\ImageProcessor;
 use LogicException;
@@ -49,6 +50,12 @@ class ImageProcessingFileAdder extends FileAdder
         $this->pathToFile = $processedPath;
         $this->fileSize = null;
         $this->fileName = pathinfo($this->fileName, PATHINFO_FILENAME).'.'.$processor->extensionFor($mimeType);
+
+        // Kept so the API can give image sizes without reading files.
+        $this->customProperties = [
+            ...$this->customProperties,
+            ...ConversionSize::measure((string) file_get_contents($processedPath)),
+        ];
 
         if (! $this->preserveOriginal) {
             @unlink($sourcePath);

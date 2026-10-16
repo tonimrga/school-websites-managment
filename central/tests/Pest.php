@@ -291,6 +291,14 @@ function jpegWithExif(int $width, int $height, int $orientation = 1): string
 }
 
 /**
+ * The public API URL of a school, e.g. schoolApi($school, '/home').
+ */
+function schoolApi(School $school, string $path = ''): string
+{
+    return '/api/v1/schools/'.$school->slug.$path;
+}
+
+/**
  * Log in as the super admin with the given school selected in the switcher.
  */
 function actingAsSuperAdmin(?School $school = null): User
