@@ -13,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
 
 /**
  * Role, school and active flag are deliberately not fillable: they are only
@@ -24,6 +26,8 @@ class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    use LogsActivity;
 
     /**
      * Get the attributes that should be cast.
@@ -87,5 +91,16 @@ class User extends Authenticatable implements FilamentUser
         }
 
         return $this->school?->is_active === true;
+    }
+
+    /**
+     * Account changes are logged; passwords and login times never are.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'email', 'role', 'school_id', 'is_active'])
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

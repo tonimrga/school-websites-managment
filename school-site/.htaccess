@@ -1,0 +1,37 @@
+# Apache / LiteSpeed configuration of the school site.
+
+Options -Indexes
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Public static files are served directly.
+    RewriteCond %{REQUEST_URI} ^/assets/ [OR]
+    RewriteCond %{REQUEST_URI} ^/robots\.txt$
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # Everything else (pages, unknown paths, and private files such as
+    # config.php, lib/, templates/ and pages/) goes to the front controller.
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Never serve hidden files such as this one.
+<FilesMatch "^\.">
+    Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    Header always set X-Frame-Options "SAMEORIGIN"
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType text/css "access plus 1 week"
+    ExpiresByType application/javascript "access plus 1 week"
+    ExpiresByType text/javascript "access plus 1 week"
+</IfModule>

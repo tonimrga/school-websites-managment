@@ -6,6 +6,7 @@ use App\Models\DocumentCategory;
 use App\Models\School;
 use App\Models\Scopes\SchoolScope;
 use Database\Seeders\DemoSchoolsSeeder;
+use Illuminate\Support\Facades\Storage;
 use Livewire\Livewire;
 
 /*
@@ -80,6 +81,8 @@ it('adds missing defaults without touching existing categories', function () {
 });
 
 it('gives the demo schools their default categories, idempotently', function () {
+    Storage::fake('public');
+
     $this->seed(DemoSchoolsSeeder::class);
     $this->seed(DemoSchoolsSeeder::class);
 

@@ -34,13 +34,13 @@ class ActivitiesTable
                     ->formatStateUsing(fn (?string $state): string => static::eventLabel($state))
                     ->color(fn (?string $state): string => match ($state) {
                         'created', 'published' => 'success',
-                        'deleted' => 'danger',
+                        'deleted', 'login_failed' => 'danger',
                         'unpublished' => 'warning',
                         default => 'gray',
                     }),
                 TextColumn::make('subject_type')
                     ->label('Sadržaj')
-                    ->formatStateUsing(fn (Activity $record): string => static::subjectLabel($record))
+                    ->state(fn (Activity $record): string => static::subjectLabel($record))
                     ->wrap(),
                 TextColumn::make('changed_fields')
                     ->label('Promijenjeno')
@@ -73,6 +73,11 @@ class ActivitiesTable
 
     public static function subjectLabel(Activity $activity): string
     {
+        // A failed login with an unknown email has no subject.
+        if ($activity->subject_type === null) {
+            return static::changes($activity, 'attributes')['email'] ?? '—';
+        }
+
         $type = ActivityResource::SUBJECT_LABELS[$activity->subject_type] ?? class_basename((string) $activity->subject_type);
         // Schools and categories have a name instead of a title.
         $title = $activity->subject?->getAttribute('title')

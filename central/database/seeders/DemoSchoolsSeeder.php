@@ -8,10 +8,12 @@ use App\Models\DocumentCategory;
 use App\Models\School;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Str;
 
 /**
  * Two demo schools with one editor each, so tenant isolation can be checked
- * by hand. Local development only; the full demo content comes later.
+ * by hand: all settings filled in and a generated logo. Their content comes
+ * from DemoContentSeeder. Local development only.
  */
 class DemoSchoolsSeeder extends Seeder
 {
@@ -29,6 +31,15 @@ class DemoSchoolsSeeder extends Seeder
                     'city' => 'Zagreb',
                     'phone' => '01 111 1111',
                     'email' => 'ured@os-igundulica.example',
+                    'office_hours' => "Tajništvo: ponedjeljak – petak, 8:00 – 15:00\nRačunovodstvo: ponedjeljak – četvrtak, 9:00 – 13:00",
+                    'map_embed_url' => 'https://www.openstreetmap.org/export/embed.html?bbox=15.9700%2C45.8080%2C15.9940%2C45.8200&layer=mapnik&marker=45.8140%2C15.9820',
+                    'contact_note' => "Ravnatelj: Ivan Horvat, ravnatelj@os-igundulica.example\nPedagoginja: Ana Kovač, 01 111 1112\nDežurni odgajatelj (noću): 091 111 1113",
+                    'social_links' => [
+                        'facebook' => 'https://www.facebook.com/ucenicki.dom.gundulic',
+                        'instagram' => 'https://www.instagram.com/ucenicki.dom.gundulic',
+                        'youtube' => null,
+                    ],
+                    'old_site_url' => 'https://stari.os-ivana-gundulica.example',
                 ],
                 'editor' => ['name' => 'Urednik Gundulić', 'email' => 'urednik@os-ivana-gundulica.example'],
             ],
@@ -43,6 +54,15 @@ class DemoSchoolsSeeder extends Seeder
                     'city' => 'Split',
                     'phone' => '021 222 222',
                     'email' => 'ured@os-druga-skola.example',
+                    'office_hours' => 'Uredovno vrijeme: ponedjeljak – petak, 7:30 – 14:30',
+                    'map_embed_url' => 'https://www.openstreetmap.org/export/embed.html?bbox=16.4300%2C43.5030%2C16.4500%2C43.5130&layer=mapnik&marker=43.5081%2C16.4402',
+                    'contact_note' => null,
+                    'social_links' => [
+                        'facebook' => null,
+                        'instagram' => null,
+                        'youtube' => 'https://www.youtube.com/@drugiucenickidom',
+                    ],
+                    'old_site_url' => null,
                 ],
                 'editor' => ['name' => 'Urednik Druga', 'email' => 'urednik@os-druga-skola.example'],
             ],
@@ -55,6 +75,13 @@ class DemoSchoolsSeeder extends Seeder
 
             // New schools get them on create; this adds any missing to existing ones.
             DocumentCategory::createDefaultsFor($school);
+
+            if ($school->getFirstMedia('logo') === null) {
+                $school->addMedia(DemoImage::logo($school->theme))
+                    ->usingName('logo')
+                    ->usingFileName(Str::random(40).'.png')
+                    ->toMediaCollection('logo');
+            }
 
             $editor = User::firstOrNew(['email' => $data['editor']['email']]);
             $editor->name = $data['editor']['name'];

@@ -29,7 +29,7 @@ class ActivityInfolist
                     ->formatStateUsing(fn (?string $state): string => ActivitiesTable::eventLabel($state)),
                 TextEntry::make('subject_type')
                     ->label('Sadržaj')
-                    ->formatStateUsing(fn (Activity $record): string => ActivitiesTable::subjectLabel($record))
+                    ->state(fn (Activity $record): string => ActivitiesTable::subjectLabel($record))
                     ->columnSpanFull(),
                 KeyValueEntry::make('old_values')
                     ->label('Prije')

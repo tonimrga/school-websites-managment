@@ -10,6 +10,7 @@ use App\Models\Article;
 use App\Models\Document;
 use App\Models\DocumentCategory;
 use App\Models\School;
+use App\Models\User;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -48,6 +49,8 @@ class ActivityResource extends Resource
         'restored' => 'Vraćeno iz smeća',
         'published' => 'Objavljeno',
         'unpublished' => 'Povučeno iz objave',
+        'login' => 'Prijava',
+        'login_failed' => 'Neuspjela prijava',
     ];
 
     /**
@@ -58,6 +61,7 @@ class ActivityResource extends Resource
         Document::class => 'Dokument',
         DocumentCategory::class => 'Kategorija dokumenata',
         School::class => 'Dom',
+        User::class => 'Korisnik',
     ];
 
     public static function infolist(Schema $schema): Schema

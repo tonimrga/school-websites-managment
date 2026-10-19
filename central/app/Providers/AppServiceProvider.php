@@ -3,12 +3,14 @@
 namespace App\Providers;
 
 use App\Livewire\SchoolSwitcher;
+use App\Models\User;
 use App\Support\CurrentSchool;
 use App\Support\HtmlSanitizer;
 use App\Support\MediaLibrary\ImageProcessingFileAdder;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Auth\Events\Failed;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Console\ServeCommand;
@@ -16,8 +18,10 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 use Livewire\Livewire;
+use Spatie\Activitylog\ActivityLogger;
 use Spatie\MediaLibrary\MediaCollections\FileAdder;
 
 class AppServiceProvider extends ServiceProvider
@@ -59,6 +63,27 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(Login::class, function (Login $event): void {
             $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
+
+            if ($event->user instanceof User) {
+                activity()
+                    ->causedBy($event->user)
+                    ->performedOn($event->user)
+                    ->event('login')
+                    ->withProperties(['attributes' => ['ip' => request()->ip()]])
+                    ->log('login');
+            }
+        });
+
+        // Wrong passwords and inactive accounts. Never logs the password.
+        Event::listen(Failed::class, function (Failed $event): void {
+            activity()
+                ->when($event->user instanceof User, fn (ActivityLogger $logger) => $logger->performedOn($event->user))
+                ->event('login_failed')
+                ->withProperties(['attributes' => [
+                    'email' => Str::limit((string) ($event->credentials['email'] ?? ''), 255),
+                    'ip' => request()->ip(),
+                ]])
+                ->log('login_failed');
         });
 
         $this->configureFilamentDateFormats();
